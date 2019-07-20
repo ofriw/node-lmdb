@@ -51,7 +51,7 @@ void TxnWrap::removeFromEnvWrap() {
                 ew->readTxns.erase(it);
             }
         }
-        
+
         this->ew->Unref();
         this->ew = nullptr;
     }
@@ -70,7 +70,7 @@ NAN_METHOD(TxnWrap::ctor) {
 
         setFlagFromValue(&flags, MDB_RDONLY, "readOnly", false, options);
     }
-    
+
     // Check existence of current write transaction
     if (0 == (flags & MDB_RDONLY) && ew->currentWriteTxn != nullptr) {
         return Nan::ThrowError("You have already opened a write transaction in the current process, can't open a second one.");
@@ -87,7 +87,7 @@ NAN_METHOD(TxnWrap::ctor) {
     tw->ew = ew;
     tw->ew->Ref();
     tw->Wrap(info.This());
-    
+
     // Set the current write transaction
     if (0 == (flags & MDB_RDONLY)) {
         ew->currentWriteTxn = tw;
@@ -131,6 +131,13 @@ NAN_METHOD(TxnWrap::abort) {
     tw->txn = nullptr;
 }
 
+NAN_METHOD(TxnWrap::isActive) {
+    Nan::HandleScope scope;
+
+    TxnWrap *tw = Nan::ObjectWrap::Unwrap<TxnWrap>(info.This());
+    return info.GetReturnValue().Set(Nan::New<Boolean>(!!tw->txn));
+}
+
 NAN_METHOD(TxnWrap::reset) {
     Nan::HandleScope scope;
 
@@ -160,7 +167,7 @@ NAN_METHOD(TxnWrap::renew) {
 
 Nan::NAN_METHOD_RETURN_TYPE TxnWrap::getCommon(Nan::NAN_METHOD_ARGS_TYPE info, Local<Value> (*successFunc)(MDB_val&)) {
     Nan::HandleScope scope;
-    
+
     if (info.Length() != 2 && info.Length() != 3) {
         return Nan::ThrowError("Invalid number of arguments to cursor.get");
     }
@@ -190,7 +197,7 @@ Nan::NAN_METHOD_RETURN_TYPE TxnWrap::getCommon(Nan::NAN_METHOD_ARGS_TYPE info, L
     oldkey.mv_size = key.mv_size;
 
     int rc = mdb_get(tw->txn, dw->dbi, &key, &data);
-    
+
     if (freeKey) {
         freeKey(oldkey);
     }
@@ -232,7 +239,7 @@ NAN_METHOD(TxnWrap::getBoolean) {
 
 Nan::NAN_METHOD_RETURN_TYPE TxnWrap::putCommon(Nan::NAN_METHOD_ARGS_TYPE info, void (*fillFunc)(Nan::NAN_METHOD_ARGS_TYPE info, MDB_val&), void (*freeData)(MDB_val&)) {
     Nan::HandleScope scope;
-    
+
     if (info.Length() != 3 && info.Length() != 4) {
         return Nan::ThrowError("Invalid number of arguments to txn.put");
     }
@@ -257,26 +264,26 @@ Nan::NAN_METHOD_RETURN_TYPE TxnWrap::putCommon(Nan::NAN_METHOD_ARGS_TYPE info, v
         // argToKey already threw an error
         return;
     }
-    
+
     if (!info[3]->IsNull() && !info[3]->IsUndefined() && info[3]->IsObject()) {
         auto options = Local<Object>::Cast(info[3]);
         setFlagFromValue(&flags, MDB_NODUPDATA, "noDupData", false, options);
         setFlagFromValue(&flags, MDB_NOOVERWRITE, "noOverwrite", false, options);
         setFlagFromValue(&flags, MDB_APPEND, "append", false, options);
         setFlagFromValue(&flags, MDB_APPENDDUP, "appendDup", false, options);
-        
+
         // NOTE: does not make sense to support MDB_RESERVE, because it wouldn't save the memcpy from V8 to lmdb
     }
 
     // Fill key and data
     fillFunc(info, data);
-    
+
     // Keep a copy of the original key and data, so we can free them
     MDB_val originalKey = key;
     MDB_val originalData = data;
 
     int rc = mdb_put(tw->txn, dw->dbi, &key, &data, flags);
-    
+
     // Free original key and data (what was supplied by the user, not what points to lmdb)
     if (freeKey) {
         freeKey(originalKey);
@@ -336,7 +343,7 @@ NAN_METHOD(TxnWrap::putBoolean) {
 
 NAN_METHOD(TxnWrap::del) {
     Nan::HandleScope scope;
-    
+
     // Check argument count
     auto argCount = info.Length();
     if (argCount < 2 || argCount > 4) {
@@ -354,7 +361,7 @@ NAN_METHOD(TxnWrap::del) {
     // Take care of options object and data handle
     Local<Value> options;
     Local<Value> dataHandle;
-    
+
     if (argCount == 4) {
         options = info[3];
         dataHandle = info[2];
@@ -393,7 +400,7 @@ NAN_METHOD(TxnWrap::del) {
     // Set data if dupSort true and data given
     MDB_val data;
     bool freeData = false;
-    
+
     if ((dw->flags & MDB_DUPSORT) && !(dataHandle->IsUndefined())) {
         if (dataHandle->IsString()) {
             CustomExternalStringResource::writeTo(Local<String>::Cast(dataHandle), &data);
@@ -428,7 +435,7 @@ NAN_METHOD(TxnWrap::del) {
     if (freeKey) {
         freeKey(key);
     }
-    
+
     if (freeData) {
         if (dataHandle->IsString()) {
             delete[] (uint16_t*)data.mv_data;
