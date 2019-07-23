@@ -551,7 +551,7 @@ NAN_METHOD(EnvWrap::batchWrite) {
         DbiWrap *dw = Nan::ObjectWrap::Unwrap<DbiWrap>(v8::Local<v8::Object>::Cast((isArray ? operation->Get(context, 0) : operation->Get(context, Nan::New<String>("db").ToLocalChecked())).ToLocalChecked()));
         action->dbi = dw->dbi;
         v8::Local<v8::Value> key = (isArray ? operation->Get(context, 1) : operation->Get(context, Nan::New<String>("key").ToLocalChecked())).ToLocalChecked();
-        
+
         if (!keyIsValid) {
             // just execute this the first time so we didn't need to re-execute for each iteration
             keyType = inferAndValidateKeyType(key, options, dw->keyType, keyIsValid);
@@ -673,6 +673,7 @@ void EnvWrap::setupExports(Local<Object> exports) {
     txnTpl->PrototypeTemplate()->Set(isolate, "del", Nan::New<FunctionTemplate>(TxnWrap::del));
     txnTpl->PrototypeTemplate()->Set(isolate, "reset", Nan::New<FunctionTemplate>(TxnWrap::reset));
     txnTpl->PrototypeTemplate()->Set(isolate, "renew", Nan::New<FunctionTemplate>(TxnWrap::renew));
+    txnTpl->PrototypeTemplate()->Set(isolate, "isActive", Nan::New<FunctionTemplate>(TxnWrap::isActive));
     // TODO: wrap mdb_cmp too
     // TODO: wrap mdb_dcmp too
     // TxnWrap: Get constructor
